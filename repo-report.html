@@ -1,0 +1,856 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>OpenClaw Medical Skills - 仓库深度研究报告</title>
+<style>
+  :root {
+    --primary: #2563eb;
+    --primary-dark: #1d4ed8;
+    --accent: #10b981;
+    --bg: #f8fafc;
+    --card: #ffffff;
+    --text: #1e293b;
+    --text-light: #64748b;
+    --border: #e2e8f0;
+    --gradient-start: #1e3a5f;
+    --gradient-end: #2563eb;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Noto Sans SC', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.7;
+  }
+  .hero {
+    background: linear-gradient(135deg, var(--gradient-start), var(--gradient-end));
+    color: white;
+    padding: 60px 20px;
+    text-align: center;
+    position: relative;
+    overflow: hidden;
+  }
+  .hero::before {
+    content: '';
+    position: absolute;
+    top: -50%;
+    left: -50%;
+    width: 200%;
+    height: 200%;
+    background: radial-gradient(circle at 30% 50%, rgba(16, 185, 129, 0.15) 0%, transparent 50%),
+                radial-gradient(circle at 70% 80%, rgba(59, 130, 246, 0.1) 0%, transparent 50%);
+    animation: float 20s ease-in-out infinite;
+  }
+  @keyframes float {
+    0%, 100% { transform: translate(0, 0); }
+    50% { transform: translate(-20px, -10px); }
+  }
+  .hero h1 { font-size: 2.8em; margin-bottom: 10px; position: relative; z-index: 1; }
+  .hero p { font-size: 1.2em; opacity: 0.9; position: relative; z-index: 1; }
+  .hero .badge {
+    display: inline-block;
+    background: rgba(255,255,255,0.2);
+    backdrop-filter: blur(10px);
+    padding: 8px 20px;
+    border-radius: 30px;
+    margin-top: 15px;
+    font-size: 0.95em;
+    position: relative;
+    z-index: 1;
+  }
+  .container { max-width: 1200px; margin: 0 auto; padding: 0 20px; }
+  .stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 20px;
+    margin: -40px auto 40px;
+    position: relative;
+    z-index: 2;
+  }
+  .stat-card {
+    background: var(--card);
+    border-radius: 16px;
+    padding: 28px;
+    text-align: center;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+    transition: transform 0.2s;
+  }
+  .stat-card:hover { transform: translateY(-4px); }
+  .stat-number {
+    font-size: 2.5em;
+    font-weight: 800;
+    background: linear-gradient(135deg, var(--primary), var(--accent));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+  .stat-label { color: var(--text-light); margin-top: 4px; font-size: 0.95em; }
+
+  section { margin: 50px 0; }
+  section h2 {
+    font-size: 1.8em;
+    margin-bottom: 20px;
+    padding-bottom: 10px;
+    border-bottom: 3px solid var(--primary);
+    display: inline-block;
+  }
+  .card {
+    background: var(--card);
+    border-radius: 16px;
+    padding: 30px;
+    margin-bottom: 24px;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.05);
+  }
+  .card h3 { font-size: 1.3em; margin-bottom: 12px; color: var(--primary-dark); }
+  .card p { color: var(--text-light); }
+
+  /* Category chart */
+  .bar-chart { margin: 20px 0; }
+  .bar-row {
+    display: flex;
+    align-items: center;
+    margin: 10px 0;
+    gap: 12px;
+  }
+  .bar-label {
+    min-width: 220px;
+    text-align: right;
+    font-size: 0.92em;
+    color: var(--text);
+  }
+  .bar-container {
+    flex: 1;
+    background: #e2e8f0;
+    border-radius: 8px;
+    height: 32px;
+    overflow: hidden;
+    position: relative;
+  }
+  .bar-fill {
+    height: 100%;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    padding-left: 12px;
+    color: white;
+    font-weight: 600;
+    font-size: 0.85em;
+    transition: width 1s ease-out;
+  }
+  .c1 { background: linear-gradient(90deg, #3b82f6, #60a5fa); }
+  .c2 { background: linear-gradient(90deg, #10b981, #34d399); }
+  .c3 { background: linear-gradient(90deg, #f59e0b, #fbbf24); }
+  .c4 { background: linear-gradient(90deg, #8b5cf6, #a78bfa); }
+  .c5 { background: linear-gradient(90deg, #ef4444, #f87171); }
+  .c6 { background: linear-gradient(90deg, #06b6d4, #22d3ee); }
+  .c7 { background: linear-gradient(90deg, #ec4899, #f472b6); }
+  .c8 { background: linear-gradient(90deg, #6366f1, #818cf8); }
+
+  /* Prefix treemap */
+  .treemap {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin: 20px 0;
+  }
+  .treemap-item {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 10px;
+    color: white;
+    font-weight: 700;
+    text-align: center;
+    padding: 8px;
+    line-height: 1.2;
+    cursor: default;
+    transition: transform 0.15s;
+  }
+  .treemap-item:hover { transform: scale(1.05); }
+  .treemap-item small { display: block; font-weight: 400; opacity: 0.85; font-size: 0.75em; }
+
+  /* Table */
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 16px 0;
+  }
+  th, td {
+    padding: 12px 16px;
+    text-align: left;
+    border-bottom: 1px solid var(--border);
+  }
+  th {
+    background: #f1f5f9;
+    font-weight: 600;
+    color: var(--text);
+    position: sticky;
+    top: 0;
+  }
+  tr:hover td { background: #f8fafc; }
+  .tag {
+    display: inline-block;
+    background: #e0f2fe;
+    color: #0369a1;
+    padding: 3px 10px;
+    border-radius: 12px;
+    font-size: 0.82em;
+    margin: 2px;
+  }
+  .tag.green { background: #dcfce7; color: #166534; }
+  .tag.purple { background: #f3e8ff; color: #7c3aed; }
+  .tag.orange { background: #fff7ed; color: #c2410c; }
+
+  /* Architecture diagram */
+  .arch-diagram {
+    background: #f8fafc;
+    border: 2px solid var(--border);
+    border-radius: 16px;
+    padding: 30px;
+    font-family: 'Courier New', monospace;
+    font-size: 0.88em;
+    line-height: 1.5;
+    overflow-x: auto;
+    white-space: pre;
+    color: var(--text);
+  }
+
+  /* Donut chart */
+  .donut-section {
+    display: flex;
+    align-items: center;
+    gap: 40px;
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+  .donut-container { position: relative; width: 260px; height: 260px; }
+  .donut-center {
+    position: absolute;
+    top: 50%; left: 50%;
+    transform: translate(-50%, -50%);
+    text-align: center;
+  }
+  .donut-center .number { font-size: 2.4em; font-weight: 800; color: var(--primary); }
+  .donut-center .label { color: var(--text-light); font-size: 0.9em; }
+  .legend { display: flex; flex-direction: column; gap: 10px; }
+  .legend-item { display: flex; align-items: center; gap: 10px; font-size: 0.92em; }
+  .legend-dot { width: 14px; height: 14px; border-radius: 4px; flex-shrink: 0; }
+
+  /* Highlight skills */
+  .skill-showcase {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+    gap: 20px;
+  }
+  .skill-item {
+    background: var(--card);
+    border-radius: 14px;
+    padding: 22px;
+    border-left: 4px solid var(--primary);
+    box-shadow: 0 2px 10px rgba(0,0,0,0.04);
+    transition: transform 0.15s;
+  }
+  .skill-item:hover { transform: translateY(-2px); }
+  .skill-item h4 { color: var(--primary-dark); margin-bottom: 6px; }
+  .skill-item p { font-size: 0.9em; color: var(--text-light); }
+
+  /* Timeline */
+  .timeline { position: relative; padding-left: 30px; }
+  .timeline::before {
+    content: '';
+    position: absolute;
+    left: 8px;
+    top: 0;
+    bottom: 0;
+    width: 3px;
+    background: linear-gradient(180deg, var(--primary), var(--accent));
+    border-radius: 2px;
+  }
+  .timeline-item {
+    position: relative;
+    margin-bottom: 20px;
+    padding-left: 20px;
+  }
+  .timeline-item::before {
+    content: '';
+    position: absolute;
+    left: -25px;
+    top: 6px;
+    width: 12px;
+    height: 12px;
+    background: var(--primary);
+    border-radius: 50%;
+    border: 3px solid white;
+    box-shadow: 0 0 0 2px var(--primary);
+  }
+  .timeline-hash { font-family: monospace; color: var(--accent); font-size: 0.85em; }
+  .timeline-msg { font-weight: 500; }
+
+  .footer {
+    text-align: center;
+    padding: 40px 20px;
+    color: var(--text-light);
+    font-size: 0.9em;
+    border-top: 1px solid var(--border);
+    margin-top: 60px;
+  }
+  @media (max-width: 768px) {
+    .hero h1 { font-size: 1.8em; }
+    .bar-label { min-width: 120px; font-size: 0.8em; }
+    .donut-section { flex-direction: column; }
+  }
+</style>
+</head>
+<body>
+
+<!-- Hero -->
+<div class="hero">
+  <h1>OpenClaw Medical Skills</h1>
+  <p>最大的开源医学 AI 技能库 — 深度研究报告</p>
+  <div class="badge">MIT License &middot; Python + Markdown &middot; 12+ 开源仓库聚合</div>
+</div>
+
+<!-- Stats -->
+<div class="container">
+  <div class="stats-grid">
+    <div class="stat-card">
+      <div class="stat-number">869</div>
+      <div class="stat-label">AI 技能总数</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-number">8</div>
+      <div class="stat-label">大类领域</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-number">426</div>
+      <div class="stat-label">含代码示例</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-number">120</div>
+      <div class="stat-label">含脚本工具</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-number">188</div>
+      <div class="stat-label">含参考资料</div>
+    </div>
+  </div>
+
+  <!-- 1. Project Overview -->
+  <section>
+    <h2>一、项目概述</h2>
+    <div class="card">
+      <h3>什么是 OpenClaw Medical Skills？</h3>
+      <p>
+        OpenClaw Medical Skills 是一个为 <strong>OpenClaw / NanoClaw</strong> 框架设计的、经过精心策划的开源医学 AI 技能集合。
+        它汇集了来自 <strong>12+ 个开源技能仓库</strong> 的 <strong>869 个技能</strong>，覆盖生物医学与临床研究的完整领域。
+        每个技能都是一个自包含的模块（核心为 <code>SKILL.md</code> 文件），赋予通用 AI Agent 专业的医学与科学研究能力。
+      </p>
+      <br>
+      <p><strong>核心价值：</strong></p>
+      <ul style="margin: 10px 0 0 20px; color: var(--text-light);">
+        <li>真实的 PubMed、ClinicalTrials.gov、FDA 数据库查询（非泛化回答）</li>
+        <li>完整的 RNA-seq、scRNA-seq、GWAS、变异分析生物信息学流水线</li>
+        <li>药物发现智能（ChEMBL、DrugBank、DDI 预测、药物警戒）</li>
+        <li>临床文档撰写（SOAP 病历、出院小结、先验授权审核）</li>
+        <li>基因组学支持（VCF 注释、ACMG 分类、多基因风险评分）</li>
+        <li>法规合规指导（FDA、CE 标志、IEC 62304、ISO 14971）</li>
+      </ul>
+    </div>
+  </section>
+
+  <!-- 2. Architecture -->
+  <section>
+    <h2>二、仓库架构</h2>
+    <div class="card">
+      <div class="arch-diagram">OpenClaw-Medical-Skills/
+├── README.md                          ← 主文档 (174 KB, 英文)
+├── README_zh.md                       ← 中文文档 (161 KB)
+├── skills/                            ← <strong style="color:#2563eb">869 个技能目录</strong>
+│   └── &lt;skill-name&gt;/
+│       ├── SKILL.md                   ← 技能定义文件 (必须)
+│       ├── examples/                  ← 代码示例 (426 个技能含有)
+│       ├── references/                ← 参考资料 (188 个技能含有)
+│       ├── scripts/                   ← 辅助脚本 (120 个技能含有)
+│       └── usage-guide.md             ← 使用指南 (417 个技能含有)
+├── scripts/
+│   └── validate_skill.py              ← SKILL.md 格式验证脚本
+├── .github/workflows/
+│   └── validate_skill.yml             ← CI/CD 自动验证流水线
+└── .claude-plugin/
+    └── marketplace.json               ← 插件注册表 (72 KB)</div>
+    </div>
+    <div class="card">
+      <h3>SKILL.md 文件结构规范</h3>
+      <p>每个技能的核心是一个 <code>SKILL.md</code> 文件，包含 YAML frontmatter 和 Markdown 文档：</p>
+      <table>
+        <thead>
+          <tr><th>字段</th><th>要求</th><th>说明</th></tr>
+        </thead>
+        <tbody>
+          <tr><td><code>name</code></td><td><span class="tag" style="background:#fee2e2;color:#dc2626;">必填</span></td><td>kebab-case 格式，最长 64 字符</td></tr>
+          <tr><td><code>description</code></td><td><span class="tag" style="background:#fee2e2;color:#dc2626;">必填</span></td><td>功能描述，最长 1024 字符</td></tr>
+          <tr><td><code>license</code></td><td><span class="tag">可选</span></td><td>许可证类型</td></tr>
+          <tr><td><code>category</code></td><td><span class="tag">可选</span></td><td>技能分类</td></tr>
+          <tr><td><code>tags</code></td><td><span class="tag">可选</span></td><td>标签列表</td></tr>
+          <tr><td><code>tool_type</code></td><td><span class="tag">可选</span></td><td>工具类型</td></tr>
+          <tr><td><code>allowed-tools</code></td><td><span class="tag">可选</span></td><td>允许使用的工具列表</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- 3. Category Distribution -->
+  <section>
+    <h2>三、技能分类分布</h2>
+    <div class="card">
+      <h3>8 大类别 · 869 个技能</h3>
+      <div class="bar-chart">
+        <div class="bar-row">
+          <span class="bar-label">BioOS 扩展套件</span>
+          <div class="bar-container">
+            <div class="bar-fill c1" style="width: 32.8%;">285</div>
+          </div>
+        </div>
+        <div class="bar-row">
+          <span class="bar-label">生物信息学 (gptomics)</span>
+          <div class="bar-container">
+            <div class="bar-fill c2" style="width: 27.5%;">239</div>
+          </div>
+        </div>
+        <div class="bar-row">
+          <span class="bar-label">医学与临床</span>
+          <div class="bar-container">
+            <div class="bar-fill c3" style="width: 13.7%;">119</div>
+          </div>
+        </div>
+        <div class="bar-row">
+          <span class="bar-label">数据科学与工具</span>
+          <div class="bar-container">
+            <div class="bar-fill c4" style="width: 10.7%;">93</div>
+          </div>
+        </div>
+        <div class="bar-row">
+          <span class="bar-label">组学与计算生物学</span>
+          <div class="bar-container">
+            <div class="bar-fill c5" style="width: 6.8%;">59</div>
+          </div>
+        </div>
+        <div class="bar-row">
+          <span class="bar-label">科学数据库</span>
+          <div class="bar-container">
+            <div class="bar-fill c6" style="width: 5.0%;">43</div>
+          </div>
+        </div>
+        <div class="bar-row">
+          <span class="bar-label">ClawBio 流水线</span>
+          <div class="bar-container">
+            <div class="bar-fill c7" style="width: 2.4%;">21</div>
+          </div>
+        </div>
+        <div class="bar-row">
+          <span class="bar-label">通用与核心工具</span>
+          <div class="bar-container">
+            <div class="bar-fill c8" style="width: 1.2%;">10</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3>技能命名前缀分布 (Top 10)</h3>
+      <p style="margin-bottom:16px;">技能按前缀分组，反映了仓库内子系列的规模：</p>
+      <div class="treemap">
+        <div class="treemap-item" style="width:260px;height:100px;background:#3b82f6;font-size:1.4em;">bio-*<small>395 个技能</small></div>
+        <div class="treemap-item" style="width:150px;height:80px;background:#10b981;font-size:1.1em;">tooluniverse-*<small>54 个技能</small></div>
+        <div class="treemap-item" style="width:90px;height:60px;background:#f59e0b;">single-*<small>9</small></div>
+        <div class="treemap-item" style="width:90px;height:60px;background:#8b5cf6;">scientific-*<small>8</small></div>
+        <div class="treemap-item" style="width:80px;height:60px;background:#ef4444;">clinical-*<small>7</small></div>
+        <div class="treemap-item" style="width:80px;height:60px;background:#06b6d4;">bulk-*<small>7</small></div>
+        <div class="treemap-item" style="width:70px;height:55px;background:#ec4899;">spatial-*<small>5</small></div>
+        <div class="treemap-item" style="width:70px;height:55px;background:#6366f1;">data-*<small>5</small></div>
+        <div class="treemap-item" style="width:70px;height:55px;background:#84cc16;">drug-*<small>4</small></div>
+        <div class="treemap-item" style="width:70px;height:55px;background:#f97316;">medical-*<small>4</small></div>
+      </div>
+      <p style="margin-top:12px;font-size:0.88em;color:var(--text-light);">
+        <code>bio-*</code> 前缀占全部技能的 <strong>45.5%</strong>，涵盖变异分析、比对、测序 QC、表观遗传学、单细胞等。
+        <code>tooluniverse-*</code> 系列提供 54 个高级研究工具，覆盖药物发现到精准肿瘤学。
+      </p>
+    </div>
+  </section>
+
+  <!-- 4. Donut: Resources -->
+  <section>
+    <h2>四、技能资源丰富度</h2>
+    <div class="card">
+      <div class="donut-section">
+        <div class="donut-container">
+          <svg viewBox="0 0 36 36" width="260" height="260">
+            <!-- Background circle -->
+            <circle cx="18" cy="18" r="15.9" fill="none" stroke="#e2e8f0" stroke-width="3"/>
+            <!-- Examples: 426/869 = 49% -->
+            <circle cx="18" cy="18" r="15.9" fill="none" stroke="#3b82f6" stroke-width="3"
+              stroke-dasharray="49 51" stroke-dashoffset="25" stroke-linecap="round"/>
+            <!-- Scripts: 120/869 = 13.8% -->
+            <circle cx="18" cy="18" r="15.9" fill="none" stroke="#10b981" stroke-width="3"
+              stroke-dasharray="13.8 86.2" stroke-dashoffset="76" stroke-linecap="round"/>
+            <!-- References: 188/869 = 21.6% -->
+            <circle cx="18" cy="18" r="15.9" fill="none" stroke="#f59e0b" stroke-width="3"
+              stroke-dasharray="21.6 78.4" stroke-dashoffset="62.2" stroke-linecap="round"/>
+            <!-- Usage guide: 417/869 = 48% -->
+            <circle cx="18" cy="18" r="15.9" fill="none" stroke="#8b5cf6" stroke-width="3"
+              stroke-dasharray="48 52" stroke-dashoffset="40.6" stroke-linecap="round"/>
+          </svg>
+          <div class="donut-center">
+            <div class="number">869</div>
+            <div class="label">技能总数</div>
+          </div>
+        </div>
+        <div class="legend">
+          <div class="legend-item"><div class="legend-dot" style="background:#3b82f6;"></div> 代码示例 (examples/) — 426 个 (49%)</div>
+          <div class="legend-item"><div class="legend-dot" style="background:#8b5cf6;"></div> 使用指南 (usage-guide.md) — 417 个 (48%)</div>
+          <div class="legend-item"><div class="legend-dot" style="background:#f59e0b;"></div> 参考资料 (references/) — 188 个 (22%)</div>
+          <div class="legend-item"><div class="legend-dot" style="background:#10b981;"></div> 辅助脚本 (scripts/) — 120 个 (14%)</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 5. Highlight Skills -->
+  <section>
+    <h2>五、核心技能展示</h2>
+
+    <h3 style="margin:20px 0 12px;color:var(--text-light);">临床与医学</h3>
+    <div class="skill-showcase">
+      <div class="skill-item">
+        <h4>pubmed-search</h4>
+        <p>搜索 PubMed 科学文献。当用户需要查找论文、搜索文献、查找研究成果时自动触发。</p>
+        <span class="tag green">无需认证</span><span class="tag">公共 API</span>
+      </div>
+      <div class="skill-item">
+        <h4>medical-research-toolkit</h4>
+        <p>查询 14+ 个生物医学数据库（ChEMBL、PubMed、ClinicalTrials.gov、OpenTargets、OpenFDA、OMIM、Reactome、KEGG、UniProt 等），通过统一 MCP 端点实现。</p>
+        <span class="tag green">MCP 端点</span><span class="tag purple">14+ 数据库</span>
+      </div>
+      <div class="skill-item">
+        <h4>clinical-reports</h4>
+        <p>撰写全面的临床报告 — 病例报告 (CARE)、诊断报告、临床试验报告 (ICH-E3, CSR)、患者文档 (SOAP, H&P)。符合 HIPAA/FDA/ICH-GCP 规范。</p>
+        <span class="tag orange">HIPAA 合规</span><span class="tag">FDA</span>
+      </div>
+      <div class="skill-item">
+        <h4>tooluniverse-precision-oncology</h4>
+        <p>基于分子谱为癌症患者提供可操作的治疗建议。解读肿瘤突变，识别 FDA 批准的疗法、临床试验和耐药机制。</p>
+        <span class="tag purple">精准医学</span>
+      </div>
+    </div>
+
+    <h3 style="margin:30px 0 12px;color:var(--text-light);">生物信息学与基因组学</h3>
+    <div class="skill-showcase">
+      <div class="skill-item">
+        <h4>bio-variant-calling</h4>
+        <p>基于 GATK 的胚系变异检测流水线，从比对后的 BAM/CRAM 文件开始处理。</p>
+        <span class="tag">GATK</span><span class="tag green">流水线</span>
+      </div>
+      <div class="skill-item">
+        <h4>tooluniverse-single-cell</h4>
+        <p>使用 scanpy 进行单细胞 RNA-seq 分析。包含 QC、标准化、PCA、UMAP、Leiden 聚类、轨迹分析和细胞类型注释。</p>
+        <span class="tag purple">scanpy</span>
+      </div>
+      <div class="skill-item">
+        <h4>alphafold</h4>
+        <p>使用 AlphaFold2 结构预测验证蛋白质设计。验证设计序列是否正确折叠。</p>
+        <span class="tag">AI 预测</span><span class="tag green">蛋白质结构</span>
+      </div>
+      <div class="skill-item">
+        <h4>antibody-design-agent</h4>
+        <p>抗体工程设计 Agent，集成 MAGE 和 RFdiffusion 方法。用于治疗性抗体的从头设计与优化。</p>
+        <span class="tag orange">蛋白质设计</span>
+      </div>
+    </div>
+
+    <h3 style="margin:30px 0 12px;color:var(--text-light);">药物发现与安全</h3>
+    <div class="skill-showcase">
+      <div class="skill-item">
+        <h4>tooluniverse-drug-repurposing</h4>
+        <p>利用靶点驱动、化合物驱动和疾病驱动策略识别药物再利用候选物。通过分析靶点、生物活性和安全性概况寻找新适应症。</p>
+        <span class="tag">药物再利用</span>
+      </div>
+      <div class="skill-item">
+        <h4>tooluniverse-drug-drug-interaction</h4>
+        <p>药物-药物相互作用预测与风险评估。分析 CYP450/转运体机制，支持多药联合分析 (3+ 药物)。</p>
+        <span class="tag orange">DDI</span><span class="tag">CYP450</span>
+      </div>
+      <div class="skill-item">
+        <h4>tooluniverse-adverse-event-detection</h4>
+        <p>使用 FDA FAERS 数据、药物标签和生物医学证据检测和分析药物不良事件信号。生成定量安全信号评分 (0-100)。</p>
+        <span class="tag purple">药物警戒</span>
+      </div>
+      <div class="skill-item">
+        <h4>molecular-dynamics</h4>
+        <p>使用 OpenMM 和 MDAnalysis 运行和分析分子动力学模拟。蛋白质/小分子系统、力场、RMSD/RMSF 分析。</p>
+        <span class="tag green">模拟</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- 6. Sub-categories deep dive -->
+  <section>
+    <h2>六、详细子类别清单</h2>
+    <div class="card">
+      <table>
+        <thead>
+          <tr><th>大类</th><th>子类别</th><th>典型技能</th></tr>
+        </thead>
+        <tbody>
+          <tr><td rowspan="8" style="font-weight:600;vertical-align:top;">医学与临床<br><span class="tag">119</span></td>
+            <td>医学工具</td><td>pubmed-search, medical-research-toolkit, usmle, clinical-reports</td></tr>
+          <tr><td>药物安全与化学生物学</td><td>adverse-event-detection, chemical-safety, binder-discovery</td></tr>
+          <tr><td>医学影像与病理</td><td>pydicom, histolab, pathml, neurokit2</td></tr>
+          <tr><td>健康 ML 与临床 AI</td><td>pyhealth, scikit-learn, transformers, shap</td></tr>
+          <tr><td>心理健康与危机干预</td><td>crisis-detection-intervention-ai, hipaa-compliance</td></tr>
+          <tr><td>健康与wellness分析</td><td>nutrition-analyzer, sleep-analyzer, fitness-analyzer</td></tr>
+          <tr><td>医疗器械与法规</td><td>iso-13485-certification, clinical-trial-protocol-skill</td></tr>
+          <tr><td>ADHD/康复/中医</td><td>adhd-daily-planner, tcm-constitution-analyzer, rehabilitation-analyzer</td></tr>
+
+          <tr><td rowspan="5" style="font-weight:600;vertical-align:top;">生物信息学<br><span class="tag green">239</span></td>
+            <td>变异分析 (30+)</td><td>bio-variant-calling, bio-vcf-basics, bio-gatk-variant-calling</td></tr>
+          <tr><td>测序 QC & 比对 (20+)</td><td>bio-fastq-quality, bio-alignment-*, bio-read-qc-*</td></tr>
+          <tr><td>转录组 & 差异表达</td><td>bio-rna-quantification-*, bio-differential-expression-*</td></tr>
+          <tr><td>单细胞 & 空间组学</td><td>bio-single-cell-*, bio-spatial-*</td></tr>
+          <tr><td>表观 / 宏基因 / 免疫</td><td>bio-atac-seq-*, bio-chipseq-*, bio-metagenomics-*</td></tr>
+
+          <tr><td rowspan="3" style="font-weight:600;vertical-align:top;">科学数据库<br><span class="tag purple">43</span></td>
+            <td>基因组 & 变异</td><td>clinvar, ensembl, gene, geo, ena, pysam</td></tr>
+          <tr><td>蛋白 / 通路 / 药物</td><td>uniprot, kegg, reactome, chembl, drugbank, pubchem</td></tr>
+          <tr><td>癌症 & 结构</td><td>cbioportal, depmap, alphafold-database, pdb</td></tr>
+
+          <tr><td rowspan="2" style="font-weight:600;vertical-align:top;">BioOS 套件<br><span class="tag orange">285</span></td>
+            <td>肿瘤 / 免疫 / 血液</td><td>autonomous-oncology-agent, tumor-*-agent, immunotherapy-*</td></tr>
+          <tr><td>药物设计 / 临床AI</td><td>virtual-lab-agent, drug-discovery-*, clinical-ai-*</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- 7. API Coverage -->
+  <section>
+    <h2>七、外部数据库 & API 覆盖</h2>
+    <div class="card">
+      <h3>连接的公共数据库与 API (精选)</h3>
+      <div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:12px;">
+        <span class="tag green">PubMed</span>
+        <span class="tag green">ClinicalTrials.gov</span>
+        <span class="tag green">OpenFDA</span>
+        <span class="tag green">NCBI Gene</span>
+        <span class="tag green">GEO</span>
+        <span class="tag green">ClinVar</span>
+        <span class="tag green">gnomAD</span>
+        <span class="tag green">GTEx</span>
+        <span class="tag green">Ensembl</span>
+        <span class="tag green">UniProt</span>
+        <span class="tag green">PDB / RCSB</span>
+        <span class="tag green">AlphaFold DB</span>
+        <span class="tag green">ChEMBL</span>
+        <span class="tag green">DrugBank</span>
+        <span class="tag green">PubChem</span>
+        <span class="tag green">ZINC</span>
+        <span class="tag green">KEGG</span>
+        <span class="tag green">Reactome</span>
+        <span class="tag green">STRING</span>
+        <span class="tag green">OpenTargets</span>
+        <span class="tag green">OMIM</span>
+        <span class="tag green">cBioPortal</span>
+        <span class="tag green">DepMap</span>
+        <span class="tag green">COSMIC</span>
+        <span class="tag green">InterPro</span>
+        <span class="tag green">JASPAR</span>
+        <span class="tag green">HMDB</span>
+        <span class="tag green">BindingDB</span>
+        <span class="tag green">Monarch</span>
+        <span class="tag green">ENA</span>
+        <span class="tag green">BioRxiv</span>
+        <span class="tag green">arXiv</span>
+        <span class="tag green">OpenAlex</span>
+        <span class="tag green">USPTO</span>
+        <span class="tag green">Wikipedia</span>
+      </div>
+      <p style="margin-top:16px;font-size:0.9em;color:var(--text-light);">
+        绝大多数数据库采用公共 API，<strong>无需 API Key 或认证即可使用</strong>。少数数据库（如 COSMIC）需要注册。
+      </p>
+    </div>
+  </section>
+
+  <!-- 8. Quality Assurance -->
+  <section>
+    <h2>八、质量保证体系</h2>
+    <div class="card">
+      <h3>自动化验证流水线</h3>
+      <p>仓库配备完整的 CI/CD 质量保证体系：</p>
+      <table>
+        <thead><tr><th>组件</th><th>功能</th></tr></thead>
+        <tbody>
+          <tr>
+            <td><code>scripts/validate_skill.py</code></td>
+            <td>
+              验证 SKILL.md 文件存在性 · YAML frontmatter 解析 · 必填字段 (<code>name</code>, <code>description</code>) ·
+              kebab-case 命名规范 · 名称长度 (≤64 字符) · 无连续连字符
+            </td>
+          </tr>
+          <tr>
+            <td><code>.github/workflows/validate_skill.yml</code></td>
+            <td>
+              GitHub Actions 自动验证 · 触发于 <code>skills/*/SKILL.md</code> 变更 ·
+              检测新增/修改/删除的技能 · 防止不完整删除（SKILL.md 被删但目录仍在）
+            </td>
+          </tr>
+          <tr>
+            <td><code>.claude-plugin/marketplace.json</code></td>
+            <td>
+              插件注册表 (72 KB) · 映射全部 869 个技能 · 包含技能路径、描述和元数据
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="card">
+      <h3>验证规则摘要</h3>
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:16px;margin-top:12px;">
+        <div style="padding:16px;background:#f0fdf4;border-radius:10px;border-left:4px solid #10b981;">
+          <strong>命名规范</strong><br>
+          <span style="color:var(--text-light);font-size:0.9em;">
+            仅允许小写字母、数字、连字符<br>
+            不能以连字符开头/结尾<br>
+            不允许连续连字符 (<code>--</code>)
+          </span>
+        </div>
+        <div style="padding:16px;background:#eff6ff;border-radius:10px;border-left:4px solid #3b82f6;">
+          <strong>必填字段</strong><br>
+          <span style="color:var(--text-light);font-size:0.9em;">
+            <code>name</code>: 字符串，kebab-case<br>
+            <code>description</code>: 字符串，描述用途
+          </span>
+        </div>
+        <div style="padding:16px;background:#faf5ff;border-radius:10px;border-left:4px solid #8b5cf6;">
+          <strong>长度限制</strong><br>
+          <span style="color:var(--text-light);font-size:0.9em;">
+            名称最长 64 字符<br>
+            描述最长 1024 字符（注释中）
+          </span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 9. Installation -->
+  <section>
+    <h2>九、安装方式</h2>
+    <div class="card">
+      <table>
+        <thead><tr><th>方式</th><th>命令</th><th>说明</th></tr></thead>
+        <tbody>
+          <tr>
+            <td><strong>方式 1</strong><br>克隆拷贝</td>
+            <td><code>cp -r skills/* ~/.openclaw/skills/</code></td>
+            <td>推荐方式，复制到工作区或全局目录</td>
+          </tr>
+          <tr>
+            <td><strong>方式 2</strong><br>ClawHub CLI</td>
+            <td><code>clawhub install &lt;skill-slug&gt;</code></td>
+            <td>通过注册表安装单个技能</td>
+          </tr>
+          <tr>
+            <td><strong>方式 3</strong><br>目录挂载</td>
+            <td><code>openclaw.json → extraDirs</code></td>
+            <td>永久挂载克隆目录，无需复制</td>
+          </tr>
+          <tr>
+            <td><strong>方式 4</strong><br>选择性安装</td>
+            <td><code>cp -r skills/&lt;name&gt; ...</code></td>
+            <td>仅安装所需技能</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- 10. Git History -->
+  <section>
+    <h2>十、版本历史</h2>
+    <div class="card">
+      <div class="timeline">
+        <div class="timeline-item">
+          <span class="timeline-hash">547ad39</span>
+          <div class="timeline-msg">Merge pull request #10 — 合并社区贡献</div>
+        </div>
+        <div class="timeline-item">
+          <span class="timeline-hash">6ce3392</span>
+          <div class="timeline-msg">add precise skill source — 添加精确技能来源标注</div>
+        </div>
+        <div class="timeline-item">
+          <span class="timeline-hash">46ed7c4</span>
+          <div class="timeline-msg">Rewrite README — 重写文档</div>
+        </div>
+        <div class="timeline-item">
+          <span class="timeline-hash">e3854e0</span>
+          <div class="timeline-msg">group skills — 技能分组整理</div>
+        </div>
+        <div class="timeline-item">
+          <span class="timeline-hash">32520a2</span>
+          <div class="timeline-msg">improve sanity check logic — 改进验证逻辑</div>
+        </div>
+        <div class="timeline-item">
+          <span class="timeline-hash">3cca49e</span>
+          <div class="timeline-msg">add marketplace.json — 添加插件注册表</div>
+        </div>
+        <div class="timeline-item">
+          <span class="timeline-hash">20e8e85</span>
+          <div class="timeline-msg">validate skills in GitHub action — CI 自动验证技能</div>
+        </div>
+        <div class="timeline-item">
+          <span class="timeline-hash">d156cd4</span>
+          <div class="timeline-msg">update README.md — 更新文档</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 11. Summary -->
+  <section>
+    <h2>十一、总结与评价</h2>
+    <div class="card">
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:20px;">
+        <div>
+          <h3 style="color:#10b981;">优势</h3>
+          <ul style="margin:10px 0 0 20px;color:var(--text-light);">
+            <li><strong>规模最大</strong> — 869 个医学 AI 技能，覆盖完整生物医学领域</li>
+            <li><strong>免认证</strong> — 绝大多数技能使用公共 API，零配置即用</li>
+            <li><strong>模块化</strong> — 每个技能自包含，可按需安装</li>
+            <li><strong>规范化</strong> — 统一的 SKILL.md 格式，CI 自动验证</li>
+            <li><strong>多来源</strong> — 聚合 12+ 开源仓库，社区驱动</li>
+            <li><strong>文档齐全</strong> — 双语文档，48% 技能含使用指南</li>
+          </ul>
+        </div>
+        <div>
+          <h3 style="color:#f59e0b;">注意事项</h3>
+          <ul style="margin:10px 0 0 20px;color:var(--text-light);">
+            <li><strong>体积大</strong> — 全量安装含 869 个目录，适合选择性安装</li>
+            <li><strong>依赖外部 API</strong> — 需要网络访问才能发挥核心功能</li>
+            <li><strong>Python 为主</strong> — 所有代码示例均为 Python</li>
+            <li><strong>需配合框架</strong> — 设计用于 OpenClaw/NanoClaw，非独立运行</li>
+            <li><strong>部分技能需认证</strong> — COSMIC 等少数数据库需注册</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <div class="footer">
+    <p>OpenClaw Medical Skills 仓库深度研究报告 &middot; 生成日期: 2026-03-11</p>
+    <p>基于仓库 <code>MedClaw-Org/OpenClaw-Medical-Skills</code> 的自动化分析</p>
+  </div>
+</div>
+
+</body>
+</html>
